@@ -1,0 +1,48 @@
+---
+title: "A Gental Intro to Rcpp"
+author: "D Eddelbuettel"
+date: "Thursday, February 05, 2015"
+output: html_document
+---
+
+This R Markdown document reproduces the example code in 
+'Chapter 1: A Gental Introduction to Rcpp' of
+*Seamless R and C++ Integration with Rcpp*
+stored in the folder
+"/SkyDrive/Trinostics/Rcpp Book".
+
+```{r}
+xx <- faithful$eruptions
+fit <- density(xx)
+plot(fit)
+```
+
+```{r}
+xx <- faithful$eruptions
+fit1 <- density(xx)
+fit2 <- replicate(10000, {
+  x <- sample(xx, replace = TRUE);
+  density(x, from = min(fit1$x), to = max(fit1$x))$y # supplying this
+  # from, to range "ensures that the bootstrapped density is estimated 
+  # on the same grid of x values as in fit1" (p. 5)
+})
+fit3 <- apply(fit2, 1, quantile, c(0.025, 0.975))
+plot(fit1, ylim = range(fit3))
+polygon(c(fit1$x, rev(fit1$x)),
+        c(fit3[1,], rev(fit3[2,])),
+        col = 'grey', border = F)
+lines(fit1)
+```
+For this data set, the grid contains 512 points
+```{r}
+length(fit1$x)
+```
+This is because, via help(density),
+
+> The algorithm used in density.default disperses the mass of the empirical 
+distribution function over a regular grid of at least 512 points 
+
+## 1.2 A First Example
+
+Finonacci sequence 
+$F_n = F_{n-1} + F_{n-2}$

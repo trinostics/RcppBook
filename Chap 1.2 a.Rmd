@@ -1,0 +1,116 @@
+---
+title: "A Gental Intro to Rcpp"
+author: "Dan Murphy"
+date: "Thursday, February 05, 2015"
+output: html_document
+---
+
+This R Markdown document reproduces the example code in 
+'Chapter 1: A Gental Introduction to Rcpp' of
+*Seamless R and C++ Integration with Rcpp*
+stored in the folder
+"/SkyDrive/Trinostics/Rcpp Book".
+
+## 1.2 A First Example
+
+Finonacci sequence 
+
+$$ 
+F_n = F_{n-1} + F_{n-2} 
+$$
+
+with these two initial conditions
+
+$$ 
+F_0 = 0, F_1 = 1 
+$$
+
+```{r}
+fibR <- function(n) {
+  if (n == 0) return(0)
+  if (n == 1) return(1)
+  return(fibR(n - 1) + fibR(n - 2))
+}
+fibR(0:9)
+sapply(0:9, fibR)
+```
+
+#### Implement the recursion in C++
+
+We need a pure C/C++ function as the generated function 
+will have a random identifier at the C++ level 
+preventing us from direct recursive calls.
+
+```{r}
+incltxt <- '
+int fibonacci(const int x) {
+  if (x == 0) return(0);
+  if (x == 1) return(1);
+return fibonacci(x - 1) + fibonacci(x - 2);
+}'
+```
+
+Now use the snippet above as well as one argument conversion
+in as well as out to forvide Fibonacci numbers via C++:
+
+```{r}
+library(inline)
+fibRcpp <- cxxfunction(signature(xs = "int"),
+                       plugin = "Rcpp",
+                       incl = incltxt,
+                       body = '
+  int x = Rcpp::as<int>(xs);
+  return Rcpp::wrap(fibonacci(x));
+')
+# fibRcpp(0:9) # Error in eval(...): expecting a single value
+sapply(0:9, fibRcpp)
+getwd()
+```
+
+#### 1.2.5 Using Rcpp Attributes
+
+Created a new file in RStudio, a new C++ file with the code on p. 11
+of the book. 
+Named it fibonacci.cpp.
+Then
+
+```{r}
+sourceCpp("fibonacci.cpp")
+fibonacci(20)
+```
+
+#### 1.2.7 A Second C++ Solution
+
+```{r}
+## memoization using C++
+mincltxt <- '
+#include <algorithm>
+#include <vector>
+#include <stdexcept>
+#include <cmath>
+#include <iostream>
+
+class Fib {
+public:
+  Fib(unsigned int n = 1000) {
+    memo.resize(n); // reserve n elements
+    std::fill( memo.begin(), memo.end(), NAN ); // set to NaN
+    memo[0] = 0.0; // initialize for
+    memo[1] = 1.0; // n=0 and n=1
+  }
+  double fibonacci(int x) {
+    if (x < 0) // guard against bad input
+      return( (double) NAN );
+    if (x >= (int) memo.size())
+      throw std::range_error(\"x too large for implementation\");
+    if (! ::isnan(memo[x]))
+      return(memo[x]); // if exist, reuse values
+    // build precomputed value via recursion
+    memo[x] = fibonacci(x-2) + fibonacci(x-1);
+    return( memo[x] ); // and return
+  }
+private:
+  std::vector< double > memo; // internal memory for precomp.
+};
+'
+```
